@@ -13,18 +13,12 @@ class Individual:
         else:
             r = random.randrange(2, 10)
             self.dna = [LayerType.random_layer() for _ in range(r)]
+            self.dna.append(LayerType.loss_layer())
 
-    def __run_network_(self):
-        # s = 1
-
-        # for x in self.dna:
-        #     if x:
-        #         s += 1
-
+    def __run_network_(self, thorough=False):
         try:
-            score = Neural(self).run_network()
+            score = Neural(self, thorough).run_network()
         except:
-            raise
             return 0
 
         return score
@@ -33,9 +27,10 @@ class Individual:
         self.score = self.__run_network_()
         return self.score
 
+    def get_fitness_thorough(self):
+        self.score = self.__run_network_(True)
+        return self.score
+
     def get_network(self):
         for x in self.dna:
-            if x:
-                print("softmax ", end="")
-            else:
-                print("relu ", end="")
+            print(x[0].name, end=" ")

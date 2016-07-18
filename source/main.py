@@ -12,6 +12,7 @@ import urllib.request
 import urllib.parse
 
 import time
+import theano
 
 running = True
 
@@ -47,8 +48,8 @@ def check_server_for_work(id,uuid):
                     print(valid)
     except (ConnectionRefusedError, urllib.error.URLError) as e:
         print("No server found!")
-    except:
-        print(sys.exc_info()[0])
+    # except:
+    #     print(sys.exc_info()[0])
 
 
 id = socket.gethostname()

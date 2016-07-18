@@ -8,7 +8,7 @@ Gets to 99.25% test accuracy after 12 epochs
 from __future__ import print_function
 from keras.datasets import mnist
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Dense, Dropout, Activation, Flatten, ELU
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.utils import np_utils
 
@@ -21,10 +21,15 @@ np.random.seed(1337)  # for reproducibility
 class Neural:
 
 
-    def __init__(self, individual):
+    def __init__(self, individual, thorough=False):
         self.batch_size = 128
         self.nb_classes = 10
-        self.nb_epoch = 5
+
+        if thorough:
+            self.nb_epoch = 12
+        else:
+            self.nb_epoch = 5
+
 
         # input image dimensions
         self.img_rows, self.img_cols = 28, 28
@@ -46,10 +51,12 @@ class Neural:
         self.x_test = self.x_test.astype('float32')
         self.x_train /= 255
         self.x_test /= 255
-        self.x_train = self.x_train[:500]
-        self.x_test = self.x_test[:250]
-        self.y_train = self.y_train[:500]
-        self.y_test = self.y_test[:250]
+        if not thorough:
+            self.x_train = self.x_train[:500]
+            self.x_test = self.x_test[500:750]
+            self.y_train = self.y_train[:500]
+            self.y_test = self.y_test[500:750]
+
         print('X_train shape:', self.x_train.shape)
         print(self.x_train.shape[0], 'train samples')
         print(self.x_test.shape[0], 'test samples')
@@ -60,31 +67,30 @@ class Neural:
 
         self.dna2model(individual.dna)
 
-        # model.add(Convolution2D(self.nb_filters, self.nb_conv, self.nb_conv,
-        #                         border_mode='valid',
-        #                         input_shape=(1, self.img_rows, self.img_cols)))
-        # model.add(Activation('relu'))
-        # model.add(Convolution2D(self.nb_filters, self.nb_conv, self.nb_conv))
-        # model.add(Activation('relu'))
-        # model.add(MaxPooling2D(pool_size=(self.nb_pool, self.nb_pool)))
-        # model.add(Dropout(0.25))
-        #
-        # model.add(Flatten())
-        # model.add(Dense(128))
-        # model.add(Activation('relu'))
-        # model.add(Dropout(0.5))
-        # model.add(Dense(self.nb_classes))
-        # model.add(Activation('softmax'))
-
-        self.model.compile(loss='categorical_crossentropy',
+        self.model.compile(loss=self.get_loss(individual.dna),
                            optimizer='adadelta',
                            metrics=['accuracy'])
 
+    def get_loss(self, dna):
+        for gene in dna:
+            if gene[0] == LayerType.loss:
+                return gene[1].name
+
+        return 'categorical_crossentropy'
+
+    def get_optimizer(self, dna):
+        for gene in dna:
+            if gene[0] == LayerType.optimizer:
+                return gene[1]
+
+        return 'adadelta'
+
+
     def run_network(self):
         self.model.fit(self.x_train, self.y_train, batch_size=self.batch_size, nb_epoch=self.nb_epoch,
-                       verbose=0, validation_data=(self.x_test, self.y_test))
+                       verbose=1, validation_data=(self.x_test, self.y_test))
 
-        score = self.model.evaluate(self.x_test, self.y_test, verbose=0)
+        score = self.model.evaluate(self.x_test, self.y_test, verbose=1)
         print('Test score:', score[0])
         print('Test accuracy:', score[1])
 
@@ -113,6 +119,9 @@ class Neural:
             elif x == LayerType.relu:
                 self.model.add(Dense(gene[1]))
                 self.model.add(Activation('relu'))
+            elif x == LayerType.elu:
+                self.model.add(Dense(gene[1]))
+                self.model.add(ELU())
             elif x == LayerType.softmax:
                 self.model.add(Dense(gene[1]))
                 self.model.add(Activation('softmax'))
@@ -123,7 +132,7 @@ class Neural:
                 self.model.add(Dense(gene[1]))
                 self.model.add(Activation('sigmoid'))
             elif x == LayerType.dropout:
-                self.model.add(Dropout(0.35))
+                self.model.add(Dropout(min(gene[1]/2000, .8)))
             elif x == LayerType.maxpool:
                 self.model.add(MaxPooling2D(pool_size=(self.nb_pool, self.nb_pool)))
 
